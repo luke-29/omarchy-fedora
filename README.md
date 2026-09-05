@@ -38,12 +38,9 @@ their systems when bleeding-edge Rawhide packages and inconsistencies create pro
 
 ## Supported target
 
-- Fedora Rawhide / recent stable, **x86_64**
+- Fedora Rawhide **x86_64** (starting with Fedora Sway spin recommended)
 - systemd
 - Wayland-capable hardware
-
-Not yet supported: Fedora Atomic / Silverblue / Kinoite, Asahi, ARM, immutable
-variants.
 
 ## Layout
 
