@@ -14,6 +14,12 @@ The upstream Omarchy tree is vendored under [`upstream/`](upstream) via git
 subtree and stays authoritative. **This is not an independent fork of
 Omarchy.**
 
+**This has been developed for Fedora Rawhide only! The install script wont
+work for other Fedora versions (package mapping was done for Rawhide only)**
+
+*Using Rawhide should be done by experienced users who are comfortable fixing
+their systems when bleeding-edge Rawhide packages and inconsistencies create problems.*
+
 ---
 
 ## Status
