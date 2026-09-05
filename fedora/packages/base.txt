@@ -20,18 +20,25 @@ cups-filters
 cups-pk-helper
 ddcutil
 git-delta
-docker
+moby-engine
 docker-buildx
 docker-compose
 dosfstools
+dotnet-runtime-10.0
+dua-cli
+exfatprogs
 eza
+fakeroot
 fastfetch
 fd-find
+ffmpegthumbnailer
 flatpak
 fontconfig
 foot
 fzf
 git
+gnome-keyring
+grim
 gum
 gvfs-mtp
 gvfs-nfs
@@ -44,13 +51,16 @@ jq
 lazydocker
 lazygit
 less
+libpq
 libsecret
 libyaml
 man-db
+mariadb-connector-c
 mpv
 mpv-mpris
 mise
 NetworkManager
+nss-mdns
 pamixer
 plocate
 plymouth
@@ -88,7 +98,7 @@ zbar
 zoxide
 
 # fonts / icons
-fontawesome-6-free-fonts
+fontawesome-7-free-fonts
 google-noto-color-emoji-fonts
 google-noto-sans-cjk-fonts
 google-noto-sans-fonts
@@ -99,6 +109,7 @@ yaru-icon-theme
 clang
 llvm
 lua
+compat-lua
 luarocks
 neovim
 vim-minimal

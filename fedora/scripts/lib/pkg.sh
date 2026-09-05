@@ -263,7 +263,7 @@ omarchy_pkg_install_tui() {
   )
 
   local pkg_names
-  pkg_names="$(dnf repoquery --qf '%{name}' 2>/dev/null | sort -u | fzf "${fzf_args[@]}")"
+  pkg_names="$(dnf repoquery --qf '%{name}\n' 2>/dev/null | sort -u | fzf "${fzf_args[@]}")"
 
   if [[ -n $pkg_names ]]; then
     local -a pkgs

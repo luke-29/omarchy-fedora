@@ -106,7 +106,7 @@ packages:
   bat:                   { package: bat, source: fedora }
   bluez:                 { package: bluez, source: fedora }
   bluez-tools:           { package: bluez-tools, source: fedora }
-  bluez-utils:           { package: bluez-utils, source: fedora }
+  bluez-utils:           { package: null, source: drop, note: Fedora's bluez package includes the Bluetooth utilities }
   bolt:                  { package: bolt, source: fedora }
   brightnessctl:         { package: brightnessctl, source: fedora }
   btop:                  { package: btop, source: fedora }
@@ -116,15 +116,15 @@ packages:
   cups-filters:          { package: cups-filters, source: fedora }
   cups-pk-helper:        { package: cups-pk-helper, source: fedora }
   ddcutil:               { package: ddcutil, source: fedora }
-  docker:                { package: docker, source: fedora }
+  docker:
+    package: moby-engine
+    source: substitute
+    note: Fedora packages Docker Engine as moby-engine
   docker-buildx:         { package: docker-buildx, source: fedora }
   docker-compose:        { package: docker-compose, source: fedora }
   dosfstools:            { package: dosfstools, source: fedora }
   dotnet-runtime:        { package: dotnet-runtime-10.0, source: fedora }
-  dua-cli:
-    package: dua
-    source: substitute
-    note: binary `dua` is the same tool; Fedora packages it as `dua`
+  dua-cli:               { package: dua-cli, source: fedora }
   evince:                { package: evince, source: fedora }
   exfatprogs:            { package: exfatprogs, source: fedora }
   eza:                   { package: eza, source: fedora }
@@ -144,7 +144,7 @@ packages:
   git:                   { package: git, source: fedora }
   gnome-disk-utility:    { package: gnome-disk-utility, source: fedora }
   gnome-keyring:         { package: gnome-keyring, source: fedora }
-  gnome-themes-extra:    { package: gnome-themes-extra, source: fedora }
+  gnome-themes-extra:    { package: null, source: drop, note: retired on Fedora; modern GTK ships its own themes }
   grim:                  { package: grim, source: fedora }
   gum:                   { package: gum, source: fedora }
   gvfs-mtp:              { package: gvfs-mtp, source: fedora }
@@ -298,9 +298,9 @@ packages:
     source: substitute
     note: Fedora packages JetBrains Mono; Nerd Fonts variant may need a nerd-fonts COPR/fonts package
   woff2-font-awesome:
-    package: fontawesome-6-free-fonts
+    package: fontawesome-7-free-fonts
     source: substitute
-    note: Fedora revamped fontawesome-fonts in F39; current package is fontawesome-6-free-fonts
+    note: Fedora revamped fontawesome-fonts; current package is fontawesome-7-free-fonts
   yaru-icon-theme:       { package: yaru-icon-theme, source: fedora }
 
   # --- libvips / postgresql-libs name differences ---

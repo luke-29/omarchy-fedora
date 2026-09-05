@@ -189,6 +189,22 @@ install_packages() {
   log "packages installed"
 }
 
+# Update-mode backfill: install any manifest packages missing on disk (e.g.
+# added to the manifests by an upstream sync since the initial install).
+# Best-effort so a missing/unavailable package or a transient repo issue cannot
+# abort an update. Repositories are not re-enabled here (they persist from the
+# initial install, and re-enabling them would re-run `dnf copr enable`, which
+# could fail on a transient network problem and kill the update).
+backfill_packages() {
+  log "== Backfilling newly-added packages =="
+  omarchy_fedora_install_base || warn "base package backfill failed"
+  omarchy_fedora_install_desktop || warn "desktop package backfill failed"
+  omarchy_fedora_install_applications || warn "application package backfill failed"
+  if [ "$INSTALL_FIRSTPARTY" = 1 ]; then
+    omarchy_fedora_install_firstparty || warn "first-party package backfill failed"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Phase D - System configuration (services, udev, sysctl, dracut)
 # ---------------------------------------------------------------------------
@@ -981,7 +997,8 @@ main() {
   [ "$DRY_RUN" = 1 ] && { log "dry-run complete (no changes made)"; exit 0; }
 
   if [ "$UPDATE_MODE" = 1 ]; then
-    log "== Update mode: skipping repository + package install (dnf upgrade handles those) =="
+    log "== Update mode: skipping repository setup (repos persist); backfilling packages =="
+    backfill_packages
   else
     install_repos
     install_packages

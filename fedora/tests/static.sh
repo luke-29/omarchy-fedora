@@ -49,6 +49,33 @@ while IFS= read -r pkg; do
   t "mapped: $pkg" python3 fedora/scripts/lib/resolve.py --package "$pkg"
 done < upstream/install/omarchy-base.packages
 
+echo "== Mapping consistency: fedora/substitute base packages are installed =="
+# A base package classified `fedora`/`substitute` must resolve to a Fedora
+# package name that actually appears in an install manifest (base/desktop/
+# applications). Otherwise it would silently never be installed - either the
+# mapping points at a nonexistent package (e.g. `dua` instead of `dua-cli`) or
+# the manifest is missing the entry. Offline proxy for "in the enabled repos".
+t "fedora/substitute base targets are in the install manifests" python3 -c "
+import glob, yaml
+installed = set()
+for path in glob.glob('fedora/packages/*.txt'):
+    for line in open(path):
+        line = line.split('#')[0].strip()
+        if line:
+            installed.add(line)
+packages = yaml.safe_load(open('fedora/mappings/packages.yaml'))['packages']
+missing = []
+for line in open('upstream/install/omarchy-base.packages'):
+    name = line.split('#')[0].strip()
+    if not name:
+        continue
+    entry = packages.get(name)
+    if entry and entry.get('source') in ('fedora', 'substitute') and entry.get('package'):
+        if entry['package'] not in installed:
+            missing.append((name, entry['package']))
+assert not missing, 'mapped but not installed: %r' % missing
+"
+
 echo "== First-party RPM scaffold: manifest + spec + build helper =="
 t "fedora/rpm/manifest.yaml parses" python3 -c "
 import yaml
