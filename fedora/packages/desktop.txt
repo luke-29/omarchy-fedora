@@ -21,6 +21,7 @@ gtk4-layer-shell
 sddm
 qt6-qtwayland
 qt6-qtimageformats
+qt6-qtmultimedia
 gpu-screen-recorder
 
 # IME

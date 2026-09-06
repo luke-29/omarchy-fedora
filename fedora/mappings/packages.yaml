@@ -238,6 +238,11 @@ packages:
     package: qt6-qtimageformats
     source: substitute
     note: Fedora uses qt6-qt* prefix
+  qt6-multimedia:
+    package: qt6-qtmultimedia
+    source: substitute
+    note: Fedora uses qt6-qt* prefix
+  qt6-multimedia-ffmpeg: { package: null, source: drop, note: FFmpeg backend bundled into qt6-qtmultimedia on Fedora }
   ripgrep:               { package: ripgrep, source: fedora }
   ruby:                  { package: ruby, source: fedora }
   sddm:                  { package: sddm, source: fedora }
