@@ -6,12 +6,9 @@
 - systemd
 - Wayland-capable hardware
 
-Not yet: Fedora Atomic / Silverblue / Kinoite / Asahi / ARM / immutable
-variants.
-
 ## Prerequisites
 
-- A fresh or clean Fedora installation (Workstation recommended)
+- A fresh or clean Fedora installation (Sway recommended)
 - Network access
 - Root or sudo
 - ~4 GB free disk space
@@ -62,7 +59,4 @@ sudo systemctl reboot
 
 On reboot, select the Omarchy session at the display manager.
 
-> **Note:** Omarchy first-party binaries (aether, asdcontrol, cliamp, herdr,
-> omacalc, omacut, omawrite, omarchy-nvim, tensaku, ttfx, usage) are not yet
-> packaged for Fedora. The desktop/config tree is installed, but those CLI/GUI
-> commands are not yet available. See COMPATIBILITY.md.
+> **Note:** Some Omarchy first-party binaries are available from COPRs. See COMPATIBILITY.md.
