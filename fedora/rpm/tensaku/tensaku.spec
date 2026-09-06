@@ -5,7 +5,7 @@
 # tree (bin/ + share/ incl. desktop entry, icon, man page, completions, and
 # licenses). No Rust/GTK toolchain needed.
 Name:           tensaku
-Version:        0.28.0
+Version:        0.29.0
 Release:        1%{?dist}
 Summary:        Modern screenshot annotation tool for Wayland
 
@@ -47,5 +47,7 @@ tar -xf %{SOURCE0} -C %{buildroot}/usr --strip-components=1
 %{_datadir}/fig/autocomplete/tensaku.ts
 
 %changelog
+* Sun Sep 6 2026 whelanh <brickhousedevelopers@gmail.com> - 0.29.0-1
+- Repack of upstream release tarball (v0.29.0); GPL-free MPL-2.0 tree shipped as-is
 * Mon Aug 31 2026 whelanh <brickhousedevelopers@gmail.com> - 0.28.0-1
 - Repack of upstream release tarball (v0.28.0); GPL-free MPL-2.0 tree shipped as-is
