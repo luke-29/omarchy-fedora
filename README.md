@@ -97,6 +97,11 @@ In an attempt to emulate Omarchy's Limine rollback structure. The install script
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [docs/ARCH_SPECIFIC_INVENTORY.md](docs/ARCH_SPECIFIC_INVENTORY.md)
 
+## Contributors
+
+- [Hugh Whelan](https://github.com/whelanh) — project author and maintainer.
+- [Lukas Dolzer](https://github.com/luke-29) — SDDM/login-screen installer fix and root-ownership hardening (#15, #16).
+
 ## License
 
 The Fedora compatibility layer is MIT licensed. Upstream Omarchy is MIT
