@@ -15,8 +15,8 @@ subtree and stays authoritative. **This is not an independent fork of
 Omarchy.**
 
 **This has been developed for Fedora Rawhide (package mapping was done for Rawhide only).
-However another user has reported that they've successfully installed it on Fedora
-44 and I've added Fedora 44 builds to my "1st party" COPR repo.**
+However contributor [Lukas Dolzer](https://github.com/luke-29) has successfully 
+installed it on Fedora 44 and Fedora 44 "1st party" packages are now in the COPR repo.**
 
 *Using Rawhide should be done by experienced users who are comfortable fixing
 their systems when bleeding-edge Rawhide packages and inconsistencies create problems.*
