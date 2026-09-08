@@ -496,9 +496,11 @@ install_omarchy_sddm_config() {
 
   if [ -f "$lua_src" ]; then
     if (( EUID == 0 )); then
+      mkdir -p /usr/share/sddm
       cp -a "$lua_src" /usr/share/sddm/hyprland.lua
       chown root:root /usr/share/sddm/hyprland.lua
     else
+      sudo mkdir -p /usr/share/sddm
       sudo cp -a "$lua_src" /usr/share/sddm/hyprland.lua
       sudo chown root:root /usr/share/sddm/hyprland.lua
     fi
