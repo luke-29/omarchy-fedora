@@ -380,12 +380,19 @@ install_omarchy_tree() {
 
   log "== Installing Omarchy desktop tree =="
   local dest=/usr/share/omarchy
+  # cp -a preserves the source's ownership, which is the invoking user's (this
+  # checkout), not root. Left alone, that leaves a package tree in /usr/share
+  # writable by a non-root account -- code later executed with sudo elsewhere
+  # (omarchy-apply-lock, omarchy-plymouth-set, ...) -- so reset it to root
+  # after every copy, matching what a real package install would produce.
   if (( EUID == 0 )); then
     mkdir -p "$dest"
     cp -a "$UPSTREAM"/* "$dest/"
+    chown -R root:root "$dest"
   else
     sudo mkdir -p "$dest"
     sudo cp -a "$UPSTREAM"/* "$dest/"
+    sudo chown -R root:root "$dest"
   fi
   log "Omarchy tree installed to $dest"
   log "NOTE: the 10 first-party command binaries (aether, cliamp, herdr," \
@@ -410,9 +417,11 @@ install_omarchy_user_units() {
   if (( EUID == 0 )); then
     mkdir -p /usr/lib/systemd/user
     cp -a "$src"/. /usr/lib/systemd/user/
+    chown -R root:root /usr/lib/systemd/user
   else
     sudo mkdir -p /usr/lib/systemd/user
     sudo cp -a "$src"/. /usr/lib/systemd/user/
+    sudo chown -R root:root /usr/lib/systemd/user
   fi
 }
 
@@ -429,9 +438,11 @@ install_omarchy_session() {
     if (( EUID == 0 )); then
       mkdir -p /usr/share/wayland-sessions
       cp -a "$ws_src" /usr/share/wayland-sessions/omarchy.desktop
+      chown root:root /usr/share/wayland-sessions/omarchy.desktop
     else
       sudo mkdir -p /usr/share/wayland-sessions
       sudo cp -a "$ws_src" /usr/share/wayland-sessions/omarchy.desktop
+      sudo chown root:root /usr/share/wayland-sessions/omarchy.desktop
     fi
   else
     warn "no session desktop entry at $ws_src; Omarchy won't appear at the greeter"
@@ -440,12 +451,59 @@ install_omarchy_session() {
     if (( EUID == 0 )); then
       mkdir -p /usr/share/uwsm/env.d
       cp -a "$uwsm_env_src"/. /usr/share/uwsm/env.d/
+      chown -R root:root /usr/share/uwsm/env.d
     else
       sudo mkdir -p /usr/share/uwsm/env.d
       sudo cp -a "$uwsm_env_src"/. /usr/share/uwsm/env.d/
+      sudo chown -R root:root /usr/share/uwsm/env.d
     fi
   else
     warn "no uwsm env dir at $uwsm_env_src"
+  fi
+}
+
+# Wire up SDDM's Omarchy greeter, which upstream's pacman package installs
+# straight to /etc and /usr/share/sddm; nothing in this installer vendored
+# either piece, so SDDM fell back to a generic Breeze theme and its Hyprland
+# greeter compositor crash-looped ("Config file '/usr/share/sddm/hyprland.lua'
+# is invalid: ... No such file or directory") until both were copied by hand:
+#   - etc/sddm.conf.d/{10-theme,10-wayland}.conf select the Omarchy theme and
+#     point SDDM's Wayland greeter at start-hyprland.
+#   - default/sddm/hyprland.lua is the minimal compositor config
+#     10-wayland.conf's CompositorCommand references.
+# omarchy-refresh-sddm (run post-install, or after a theme change) still needs
+# to publish the actual theme assets into /usr/share/sddm/themes/omarchy —
+# this only lays the config and compositor file it depends on.
+install_omarchy_sddm_config() {
+  [ "$COPY_OMARCHY" = 1 ] || return 0
+  local conf_src="$UPSTREAM/etc/sddm.conf.d"
+  local lua_src="$UPSTREAM/default/sddm/hyprland.lua"
+
+  if [ -d "$conf_src" ]; then
+    log "== Installing SDDM theme/Wayland config =="
+    if (( EUID == 0 )); then
+      mkdir -p /etc/sddm.conf.d
+      cp -a "$conf_src"/. /etc/sddm.conf.d/
+      chown -R root:root /etc/sddm.conf.d
+    else
+      sudo mkdir -p /etc/sddm.conf.d
+      sudo cp -a "$conf_src"/. /etc/sddm.conf.d/
+      sudo chown -R root:root /etc/sddm.conf.d
+    fi
+  else
+    warn "no SDDM config at $conf_src; greeter keeps its distro default theme"
+  fi
+
+  if [ -f "$lua_src" ]; then
+    if (( EUID == 0 )); then
+      cp -a "$lua_src" /usr/share/sddm/hyprland.lua
+      chown root:root /usr/share/sddm/hyprland.lua
+    else
+      sudo cp -a "$lua_src" /usr/share/sddm/hyprland.lua
+      sudo chown root:root /usr/share/sddm/hyprland.lua
+    fi
+  else
+    warn "no SDDM Hyprland config at $lua_src; the Wayland greeter compositor will fail to start"
   fi
 }
 
@@ -1013,6 +1071,7 @@ main() {
   install_omarchy_tree
   install_omarchy_user_units
   install_omarchy_session
+  install_omarchy_sddm_config
   install_omarchy_bin
   install_omarchy_update_shim
   install_omarchy_pkg_shims
