@@ -14,8 +14,9 @@ The upstream Omarchy tree is vendored under [`upstream/`](upstream) via git
 subtree and stays authoritative. **This is not an independent fork of
 Omarchy.**
 
-**This has been developed for Fedora Rawhide only! The install script wont
-work for other Fedora versions (package mapping was done for Rawhide only)**
+**This has been developed for Fedora Rawhide (package mapping was done for Rawhide only).
+However another user has reported that they've successfully installed it on Fedora
+44 and I've added Fedora 44 builds to my "1st party" COPR repo.**
 
 *Using Rawhide should be done by experienced users who are comfortable fixing
 their systems when bleeding-edge Rawhide packages and inconsistencies create problems.*
@@ -39,6 +40,7 @@ their systems when bleeding-edge Rawhide packages and inconsistencies create pro
 ## Supported target
 
 - Fedora Rawhide **x86_64** (starting with Fedora Sway spin recommended)
+  - It has been reported to have been successfully installed on Fedora 44 as well.
 - systemd
 - Wayland-capable hardware
 
