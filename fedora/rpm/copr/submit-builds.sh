@@ -3,9 +3,10 @@
 # whelanh/omarchy COPR for remote building.
 #
 # Usage:
-#   fedora/rpm/copr/submit-builds.sh                 # all verified packages
+#   fedora/rpm/copr/submit-builds.sh                 # all verified packages, all chroots
 #   fedora/rpm/copr/submit-builds.sh aether ttfx     # only these packages
 #   fedora/rpm/copr/submit-builds.sh --srpms-only    # build SRPMs, no submit
+#   fedora/rpm/copr/submit-builds.sh --chroot fedora-44-x86_64   # only this chroot
 #
 # Requires:
 #   - copr-cli (dnf install -y copr-cli) + login (see README.md)
@@ -13,8 +14,10 @@
 #
 # Each SRPM is produced with `rpmbuild -bs` from fedora/rpm/<pkg>/<pkg>.spec
 # (sources are downloaded locally first). Then `copr-cli build` pushes the
-# SRPM and COPR builds it in its chroot (fedora-rawhide-x86_64 with the
-# nett00n/hyprland build repo, see create-project.sh).
+# SRPM and COPR builds it in every enabled chroot of the project — or, when
+# one or more --chroot flags are given, only those chroots (see
+# create-project.sh for how the nett00n/hyprland build repo is wired per
+# chroot).
 set -euo pipefail
 
 RPM_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,6 +25,7 @@ MANIFEST="$RPM_DIR/manifest.yaml"
 COPR="whelanh/omarchy"
 SUBMIT=1
 TOP="${HOME}/rpmbuild-omarchy"
+CHROOTS=()
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing required tool: $1" >&2; exit 1; }; }
 need rpmbuild
@@ -35,17 +39,17 @@ print(re.search(r'^Name:\s*(\S+)', open(sys.argv[1]).read(), re.M).group(1))
 PY
 }
 
-for a in "$@"; do
-  [ "$a" = "--srpms-only" ] && SUBMIT=0
-done
-
 # Packages to build: explicit args minus flags, else manifest 'verified' set.
+# Flags: --srpms-only (don't submit), --chroot <name> (repeatable; submit to
+# only these chroots instead of every enabled project chroot).
 pkgs=()
-for a in "$@"; do
-  case "$a" in
-    --srpms-only) ;;
-    *) pkgs+=("$a") ;;
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --srpms-only) SUBMIT=0 ;;
+    --chroot) CHROOTS+=("$2"); shift ;;
+    *) pkgs+=("$1") ;;
   esac
+  shift
 done
 if [ "${#pkgs[@]}" -eq 0 ]; then
   while IFS= read -r p; do pkgs+=("$p"); done < <(
@@ -107,10 +111,16 @@ printf '   %s\n' "${SRPMS[@]}"
 
 if [ "$SUBMIT" = 1 ]; then
   need copr-cli
-  echo "== submitting ${#SRPMS[@]} SRPM(s) to $COPR =="
-  copr-cli build --nowait "$COPR" "${SRPMS[@]}"
+  chroot_args=()
+  for c in "${CHROOTS[@]}"; do chroot_args+=(-r "$c"); done
+  if [ "${#CHROOTS[@]}" -gt 0 ]; then
+    echo "== submitting ${#SRPMS[@]} SRPM(s) to $COPR (chroots: ${CHROOTS[*]}) =="
+  else
+    echo "== submitting ${#SRPMS[@]} SRPM(s) to $COPR (all chroots) =="
+  fi
+  copr-cli build --nowait "$COPR" "${chroot_args[@]}" "${SRPMS[@]}"
   echo
-  echo "Submitted. Watch progress: copr-cli list-watch --output-format text"
+  echo "Submitted. Watch progress: copr-cli list-builds $COPR"
 else
   echo "(--srpms-only: not submitting; SRPMs left in $TOP/SRPMS)"
 fi

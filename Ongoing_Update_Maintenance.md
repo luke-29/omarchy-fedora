@@ -122,9 +122,23 @@ COPR first-party.)
 
 ## New Fedora release
 
-COPR does not carry packages to a new chroot automatically:
+COPR does not carry packages to a new chroot automatically. Note that
+`copr-cli modify --chroot` **replaces** the chroot list, so list every chroot
+you want to keep, and register a release-matched `nett00n/hyprland` build repo
+per chroot (the project previously used a single rawhide-pinned project-level
+repo, which would poison a stable-release build):
 
 ```sh
-copr-cli modify whelanh/omarchy --chroot fedora-<N>-x86_64
-bash fedora/rpm/copr/submit-builds.sh      # rebuild all 10 into the new chroot
+# 1. add the new chroot (keeping rawhide) and its build repo
+copr-cli modify whelanh/omarchy \
+  --chroot fedora-rawhide-x86_64 --chroot fedora-<N>-x86_64
+copr-cli edit-chroot whelanh/omarchy/fedora-<N>-x86_64 \
+  --repos https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/fedora-<N>-x86_64/
+
+# 2. rebuild all 10 into the new chroot (or omit --chroot to do every chroot)
+bash fedora/rpm/copr/submit-builds.sh --chroot fedora-<N>-x86_64
 ```
+
+Verify the project's `additional_repos` is empty and each chroot has its own
+with `copr-cli get whelanh/omarchy` and `copr-cli get-chroot ...`.
+

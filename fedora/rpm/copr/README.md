@@ -33,29 +33,45 @@ The token authenticates all `copr-cli` calls below.
 ## 1. Create the project
 
 ```sh
-bash fedora/rpm/copr/create-project.sh
+bash fedora/rpm/copr/create-project.sh                        # rawhide only
+bash fedora/rpm/copr/create-project.sh fedora-44-x86_64       # rawhide + Fedora 44
 ```
 
 This creates `whelanh/omarchy` with:
-- chroot **fedora-rawhide-x86_64** (matches the container/CI verify target)
-- build-time additional repo **nett00n/hyprland** — required because
-  `hyprland-preview-share-picker` (and `tensaku`, runtime) need
-  `gtk4-layer-shell-devel`, which official Fedora doesn't ship.
+- chroot **fedora-rawhide-x86_64** (matches the container/CI verify target),
+  plus any extra chroots passed as args (rawhide is always kept enabled)
+- a **per-chroot** build-time additional repo **nett00n/hyprland** (one
+  release-matched URL per chroot) — required because
+  `hyprland-preview-share-picker` needs `gtk4-layer-shell-devel`, which
+  official Fedora doesn't ship. It is wired per-chroot, not project-wide, so a
+  Fedora 44 build never sees a rawhide hyprland repo.
 
-To review the settings afterwards: `copr-cli list` (or `create-project.sh
---check`).
+To review the settings afterwards: `copr-cli get whelanh/omarchy` and
+`copr-cli get-chroot whelanh/omarchy/<chroot>` (or `create-project.sh --check`).
 
-> If a new Fedora release becomes the Omarchy target, add its chroot with
-> `copr-cli modify whelanh/omarchy --chroot fedora-<N>-x86_64` and rebuild.
+> **Adding a Fedora release later** (e.g. Fedora 44): add its chroot *and* its
+> build repo, then rebuild. `copr-cli modify --chroot` **replaces** the chroot
+> list, so always list every chroot you want:
+>
+> ```sh
+> copr-cli modify whelanh/omarchy \
+>   --chroot fedora-rawhide-x86_64 --chroot fedora-44-x86_64
+> copr-cli edit-chroot whelanh/omarchy/fedora-44-x86_64 \
+>   --repos https://download.copr.fedorainfracloud.org/results/nett00n/hyprland/fedora-44-x86_64/
+> bash fedora/rpm/copr/submit-builds.sh
+> ```
 
 ## 2. Build + submit
 
 ```sh
-# build SRPMs locally, push to COPR (remote-build each in its chroot)
+# build SRPMs locally, push to COPR (remote-build in every enabled chroot)
 bash fedora/rpm/copr/submit-builds.sh
 
 # a subset:
 bash fedora/rpm/copr/submit-builds.sh aether ttfx
+
+# only a specific chroot (e.g. a newly added release):
+bash fedora/rpm/copr/submit-builds.sh --chroot fedora-44-x86_64
 
 # just produce SRPMs (in ~/rpmbuild-omarchy/SRPMS), don't submit:
 bash fedora/rpm/copr/submit-builds.sh --srpms-only
