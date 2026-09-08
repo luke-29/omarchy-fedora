@@ -509,6 +509,30 @@ install_omarchy_sddm_config() {
   fi
 }
 
+# Publish the Omarchy SDDM theme assets (Main.qml, logo, lock/entry PNGs) into
+# /usr/share/sddm/themes/omarchy/. Upstream does this via omarchy-refresh-sddm
+# (omarchy-plymouth-set --refresh-sddm-default), which must run as a non-root
+# user with sudo and only publishes from a root-owned source tree. Seed the
+# default theme here (root-side, verbatim — the same files refresh-sddm ships)
+# so the greeter is themed on first boot; `omarchy theme` changes still re-tint
+# it through the normal runtime path afterwards.
+install_omarchy_sddm_theme() {
+  [ "$COPY_OMARCHY" = 1 ] || return 0
+  local theme_src="$UPSTREAM/default/sddm/omarchy"
+  [ -d "$theme_src" ] || { warn "no SDDM theme assets at $theme_src; greeter keeps its default theme"; return 0; }
+
+  log "== Installing SDDM Omarchy theme assets =="
+  if (( EUID == 0 )); then
+    mkdir -p /usr/share/sddm/themes/omarchy
+    cp -a "$theme_src"/. /usr/share/sddm/themes/omarchy/
+    chown -R root:root /usr/share/sddm/themes/omarchy
+  else
+    sudo mkdir -p /usr/share/sddm/themes/omarchy
+    sudo cp -a "$theme_src"/. /usr/share/sddm/themes/omarchy/
+    sudo chown -R root:root /usr/share/sddm/themes/omarchy
+  fi
+}
+
 # Import omarchy-* commands onto PATH, mirroring the upstream architecture's
 # package map: bin/omarchy + bin/omarchy-* -> /usr/bin/omarchy* (with symlinks
 # kept under /usr/share/omarchy/bin). This is what makes `omarchy`, `omarchy
@@ -535,6 +559,34 @@ install_omarchy_bin() {
       if (( EUID == 0 )); then ln -s "$cmd" "/usr/bin/$base"; else sudo ln -s "$cmd" "/usr/bin/$base"; fi
     fi
   done
+}
+
+# Upstream's install/config/all.sh runs omarchy-apply-lock, which writes the
+# PAM services the Quickshell lock screen authenticates against
+# (/etc/pam.d/omarchy-lock-password, and omarchy-lock-fingerprint when a
+# fingerprint is enrolled). The Fedora installer otherwise never creates them,
+# so the lock screen's password flow is disabled ("missing-pam") until the user
+# runs `sudo omarchy-apply-lock` by hand. Run it here (as root) so a fresh
+# install locks correctly out of the box. Must come after install_omarchy_bin
+# so the omarchy-apply-lock symlink is on PATH.
+install_omarchy_lock_pam() {
+  [ "$COPY_OMARCHY" = 1 ] || return 0
+  command -v omarchy-apply-lock >/dev/null 2>&1 \
+    || { warn "omarchy-apply-lock not on PATH; skipping lock-screen PAM"; return 0; }
+
+  log "== Configuring lock screen authentication (PAM) =="
+  local lock_user="${TARGET_USER:-}"
+  if [ -z "$lock_user" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    lock_user="$SUDO_USER"
+  fi
+  if [ -z "$lock_user" ]; then
+    lock_user="$(awk -F: '$3>=1000 && $3<60000 {print $1; exit}' /etc/passwd)"
+  fi
+  if (( EUID == 0 )); then
+    OMARCHY_INSTALL_USER="$lock_user" omarchy-apply-lock
+  else
+    sudo OMARCHY_INSTALL_USER="$lock_user" omarchy-apply-lock
+  fi
 }
 
 # Set OMARCHY_PATH for login shells by sourcing the upstream env-bootstrap from
@@ -1074,7 +1126,9 @@ main() {
   install_omarchy_user_units
   install_omarchy_session
   install_omarchy_sddm_config
+  install_omarchy_sddm_theme
   install_omarchy_bin
+  install_omarchy_lock_pam
   install_omarchy_update_shim
   install_omarchy_pkg_shims
   install_omarchy_profile
