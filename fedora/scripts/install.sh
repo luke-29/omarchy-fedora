@@ -969,6 +969,15 @@ configure_user() {
     x11_layout="$(localectl status 2>/dev/null | awk -F': ' '/X11 Layout/ {print $2}')"
     x11_variant="$(localectl status 2>/dev/null | awk -F': ' '/X11 Variant/ {print $2}')"
     x11_model="$(localectl status 2>/dev/null | awk -F': ' '/X11 Model/ {print $2}')"
+    # localectl prints the literal string "n/a" for a field systemd-localed
+    # never had a value for (e.g. a minimal install with only a VC keymap set,
+    # no X11 keymap configured at all -- common on the installs this script
+    # targets). Treat that the same as unset: writing kb_layout = "n/a" would
+    # hand Hyprland an invalid xkb layout, and since this only runs once on
+    # the fresh seed it would never self-heal.
+    [ "$x11_layout" = "n/a" ] && x11_layout=""
+    [ "$x11_variant" = "n/a" ] && x11_variant=""
+    [ "$x11_model" = "n/a" ] && x11_model=""
     if [ -n "$x11_layout" ] && [ "$x11_layout" != "us" ]; then
       log "== Setting Hyprland keyboard layout to '$x11_layout' (from localectl) =="
       {
