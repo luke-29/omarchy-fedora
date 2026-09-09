@@ -939,6 +939,8 @@ configure_user() {
   # New files shipped upstream still land on the user's system, and future
   # users get a full copy via /etc/skel below.
   local cfg_src="$UPSTREAM/config"
+  local input_lua_seeded=0
+  [ -e "$home/.config/hypr/input.lua" ] || input_lua_seeded=1
   if [ -d "$cfg_src" ]; then
     $as_user mkdir -p "$home/.config"
     $as_user cp -a -n "$cfg_src"/. "$home/.config/" 2>/dev/null || true
@@ -952,6 +954,33 @@ configure_user() {
     fi
   else
     warn "no config tree at $cfg_src; user configs not seeded"
+  fi
+
+  # Pre-fill the keyboard layout on a fresh seed. Upstream ships input.lua with
+  # kb_layout fully commented out, so Hyprland falls back to its own built-in
+  # "us" default -- but Fedora's installer (Anaconda) already asked for and set
+  # a real layout system-wide (readable via `localectl status`), which
+  # Hyprland never consults on its own. Without this, every fresh install with
+  # a non-US keyboard boots into the wrong layout until the user manually
+  # edits input.lua. Only touches a layout we just seeded this run, never an
+  # existing (possibly already-customized) input.lua.
+  if [ "$input_lua_seeded" = 1 ] && [ -f "$home/.config/hypr/input.lua" ] && command -v localectl >/dev/null 2>&1; then
+    local x11_layout x11_variant x11_model
+    x11_layout="$(localectl status 2>/dev/null | awk -F': ' '/X11 Layout/ {print $2}')"
+    x11_variant="$(localectl status 2>/dev/null | awk -F': ' '/X11 Variant/ {print $2}')"
+    x11_model="$(localectl status 2>/dev/null | awk -F': ' '/X11 Model/ {print $2}')"
+    if [ -n "$x11_layout" ] && [ "$x11_layout" != "us" ]; then
+      log "== Setting Hyprland keyboard layout to '$x11_layout' (from localectl) =="
+      {
+        printf -- '-- Auto-detected from the system keyboard layout (localectl) at install time.\n'
+        printf -- '-- Edit or remove freely -- this only ran once, on first setup.\n'
+        printf -- 'hl.config({\n  input = {\n    kb_layout = "%s",\n' "$x11_layout"
+        [ -n "$x11_variant" ] && printf -- '    kb_variant = "%s",\n' "$x11_variant"
+        [ -n "$x11_model" ] && printf -- '    kb_model = "%s",\n' "$x11_model"
+        printf -- '  },\n})\n\n'
+      } | $as_user tee "$home/.config/hypr/input.lua.new" >/dev/null
+      $as_user bash -c 'cat "$1" >> "$2" && mv "$2" "$1"' _ "$home/.config/hypr/input.lua" "$home/.config/hypr/input.lua.new"
+    fi
   fi
 
   # Seed Omarchy branding (screensaver + About ASCII art). Upstream ships
