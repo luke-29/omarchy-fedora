@@ -818,10 +818,14 @@ install_omarchy_sudoers() {  [ "$COPY_OMARCHY" = 1 ] || return 0
   fi
 }
 
-# Omarchy draws its bar/menu glyphs with whatever `monospace` resolves to, and
-# upstream ships a fontconfig alias mapping it to "JetBrainsMono Nerd Font".
-# Fedora ships neither the alias nor a Nerd Font, so icon-family widgets render
-# blank. Enable the alias and pull in the Nerd Font when missing.
+# Omarchy draws its bar/menu glyphs with whatever `monospace` resolves to
+# (aliased to JetBrainsMono Nerd Font) plus a small bundled icon font (family
+# "omarchy") for brand marks -- the logo, agent/app glyphs -- that Nerd Fonts
+# doesn't carry, referenced by menu entries as "iconFont":"omarchy". Upstream
+# ships the fontconfig alias and both fonts via pacman packages
+# (omarchy-settings owns the icon font); Fedora has neither, so icon-family
+# widgets -- including the bar's top-left Omarchy logo button -- render blank
+# without this. Enable the alias and install whichever font is missing.
 install_omarchy_fonts() {
   [ "$COPY_OMARCHY" = 1 ] || return 0
 
@@ -837,43 +841,62 @@ install_omarchy_fonts() {
     warn "no fontconfig alias shipped at $conf_src"
   fi
 
+  local need_cache=0
+
   if fc-list : family 2>/dev/null | tr ',' '\n' | grep -Fx 'JetBrainsMono Nerd Font' >/dev/null; then
     log "== JetBrainsMono Nerd Font already present =="
-    fc-cache -f >/dev/null 2>&1 || true
-    return 0
-  fi
-
-  # Fedora has no Nerd Font package; fetch the TTF set upstream uses.
-  command -v curl >/dev/null 2>&1 || { warn "curl not found; skipping Nerd Font install"; return 0; }
-  command -v unzip >/dev/null 2>&1 || { warn "unzip not found; skipping Nerd Font install"; return 0; }
-
-  local tmp dest
-  tmp="$(mktemp -d)"
-  dest=/usr/share/fonts/jetbrainsmono-nerd
-  if ! curl -fsSLo "$tmp/JetBrainsMono.zip" \
-      https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.zip; then
-    warn "failed to download JetBrainsMono Nerd Font"
+  elif ! command -v curl >/dev/null 2>&1; then
+    warn "curl not found; skipping Nerd Font install"
+  elif ! command -v unzip >/dev/null 2>&1; then
+    warn "unzip not found; skipping Nerd Font install"
+  else
+    # Fedora has no Nerd Font package; fetch the TTF set upstream uses.
+    local tmp dest
+    tmp="$(mktemp -d)"
+    dest=/usr/share/fonts/jetbrainsmono-nerd
+    if curl -fsSLo "$tmp/JetBrainsMono.zip" \
+        https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.zip; then
+      if (( EUID == 0 )); then
+        mkdir -p "$dest"
+        unzip -q -o "$tmp/JetBrainsMono.zip" -d "$tmp/out" 2>/dev/null || true
+        install -m 0644 "$tmp"/out/*.ttf "$dest/"
+      else
+        sudo mkdir -p "$dest"
+        unzip -q -o "$tmp/JetBrainsMono.zip" -d "$tmp/out" 2>/dev/null || true
+        sudo install -m 0644 "$tmp"/out/*.ttf "$dest/"
+      fi
+      need_cache=1
+    else
+      warn "failed to download JetBrainsMono Nerd Font"
+    fi
     rm -rf "$tmp"
-    return 0
   fi
 
-  if (( EUID == 0 )); then
-    mkdir -p "$dest"
-    unzip -q -o "$tmp/JetBrainsMono.zip" -d "$tmp/out" 2>/dev/null || true
-    install -m 0644 "$tmp"/out/*.ttf "$dest/"
+  # The icon font is already vendored in the Omarchy tree (no download needed).
+  local icon_src=/usr/share/omarchy/default/fonts/omarchy/omarchy.ttf
+  local icon_dest=/usr/share/fonts/omarchy/omarchy.ttf
+  if [ ! -f "$icon_src" ]; then
+    warn "no Omarchy icon font shipped at $icon_src"
+  elif [ -f "$icon_dest" ] && cmp -s "$icon_src" "$icon_dest"; then
+    log "== Omarchy icon font already installed =="
   else
-    sudo mkdir -p "$dest"
-    unzip -q -o "$tmp/JetBrainsMono.zip" -d "$tmp/out" 2>/dev/null || true
-    sudo install -m 0644 "$tmp"/out/*.ttf "$dest/"
+    log "== Installing Omarchy icon font =="
+    if (( EUID == 0 )); then
+      mkdir -p /usr/share/fonts/omarchy
+      install -m 0644 "$icon_src" "$icon_dest"
+    else
+      sudo mkdir -p /usr/share/fonts/omarchy
+      sudo install -m 0644 "$icon_src" "$icon_dest"
+    fi
+    need_cache=1
   fi
-  rm -rf "$tmp"
 
-  fc-cache -f >/dev/null 2>&1 || true
-  if fc-list : family 2>/dev/null | tr ',' '\n' | grep -Fx 'JetBrainsMono Nerd Font' >/dev/null; then
-    log "== JetBrainsMono Nerd Font installed =="
-  else
-    warn "fontconfig still not resolving JetBrainsMono Nerd Font"
-  fi
+  (( need_cache )) && { fc-cache -f >/dev/null 2>&1 || true; }
+
+  fc-list : family 2>/dev/null | tr ',' '\n' | grep -Fx 'JetBrainsMono Nerd Font' >/dev/null \
+    || warn "fontconfig still not resolving JetBrainsMono Nerd Font"
+  fc-list : family 2>/dev/null | tr ',' '\n' | grep -Fx 'omarchy' >/dev/null \
+    || warn "fontconfig still not resolving the Omarchy icon font"
 }
 
 # ---------------------------------------------------------------------------
@@ -929,6 +952,40 @@ configure_user() {
     fi
   else
     warn "no config tree at $cfg_src; user configs not seeded"
+  fi
+
+  # Seed Omarchy branding (screensaver + About ASCII art). Upstream ships
+  # these two files via /etc/skel from the omarchy-settings package (see
+  # docs/file-layout.md); the Fedora port has no equivalent package, so
+  # nothing ever creates ~/.config/omarchy/branding/ here. Left unseeded,
+  # the screensaver's `ttfx -i ~/.config/omarchy/branding/screensaver.txt`
+  # has no file to read and fails with "error reading input file" the first
+  # time it fires. Use "omadora" (this fork's own wordmark) for the
+  # screensaver instead of upstream's "Omarchy" text; the About screen keeps
+  # the stock icon. Only fills in files the user doesn't already have, same
+  # -n semantics as the config seed above, and reseeds /etc/skel for future
+  # users.
+  local branding_dir="$home/.config/omarchy/branding"
+  $as_user mkdir -p "$branding_dir"
+  if [ ! -e "$branding_dir/screensaver.txt" ] && command -v omarchy-ascii >/dev/null 2>&1; then
+    omarchy-ascii omadora | $as_user tee "$branding_dir/screensaver.txt" >/dev/null
+  fi
+  if [ ! -e "$branding_dir/about.txt" ] && [ -f /usr/share/omarchy/icon.txt ]; then
+    $as_user tee "$branding_dir/about.txt" >/dev/null < /usr/share/omarchy/icon.txt
+  fi
+  local skel_branding=/etc/skel/.config/omarchy/branding
+  if (( EUID == 0 )); then
+    mkdir -p "$skel_branding"
+    if [ ! -e "$skel_branding/screensaver.txt" ] && command -v omarchy-ascii >/dev/null 2>&1; then
+      omarchy-ascii omadora > "$skel_branding/screensaver.txt"
+    fi
+    [ -e "$skel_branding/about.txt" ] || cp "/usr/share/omarchy/icon.txt" "$skel_branding/about.txt" 2>/dev/null || true
+  else
+    sudo mkdir -p "$skel_branding"
+    if [ ! -e "$skel_branding/screensaver.txt" ] && command -v omarchy-ascii >/dev/null 2>&1; then
+      omarchy-ascii omadora | sudo tee "$skel_branding/screensaver.txt" >/dev/null
+    fi
+    [ -e "$skel_branding/about.txt" ] || sudo cp "/usr/share/omarchy/icon.txt" "$skel_branding/about.txt" 2>/dev/null || true
   fi
 
   # Mark the upstream (Arch-specific) migrations as done in the user's state, so
